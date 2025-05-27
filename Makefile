@@ -1,7 +1,7 @@
 # Lingua Nexus - Single-Model Architecture Build System
 # Auto-discovery and pattern-based build automation for translation models
 
-.PHONY: help build\% docker\% dist\% test\% clean\% list-models validate-model install-deps
+.PHONY: help build\% docker\% dist\% test\% clean\% list-models validate-model install-deps deploy\% stop\% restart\% logs\% status
 
 # Configuration
 VERSION ?= latest
@@ -26,16 +26,27 @@ RESET := \033[0m
 help:
 	@echo "$(BLUE)Lingua Nexus - Single-Model Build System$(RESET)"
 	@echo ""
-	@echo "$(YELLOW)Available Commands:$(RESET)"
+	@echo "$(YELLOW)Build Commands:$(RESET)"
 	@echo "  $(GREEN)build:<model>$(RESET)      - Build model dependencies and validate loading"
 	@echo "  $(GREEN)docker:<model>$(RESET)     - Build Docker image for model (CPU variant)"
 	@echo "  $(GREEN)docker-gpu:<model>$(RESET) - Build GPU-optimized Docker image"
 	@echo "  $(GREEN)docker-rocm:<model>$(RESET)- Build ROCm-optimized Docker image (AMD GPUs)"
 	@echo "  $(GREEN)docker-all:<model>$(RESET) - Build all Docker variants (CPU/GPU/ROCm)"
-	@echo "  $(GREEN)dist:<model>$(RESET)       - Create distribution package for model"
+	@echo ""
+	@echo "$(YELLOW)Deployment Commands:$(RESET)"
+	@echo "  $(GREEN)deploy:<model>$(RESET)     - Build and deploy model service locally"
+	@echo "  $(GREEN)stop:<model>$(RESET)       - Stop running model service"
+	@echo "  $(GREEN)restart:<model>$(RESET)    - Restart model service"
+	@echo "  $(GREEN)logs:<model>$(RESET)       - Show service logs (use Ctrl+C to exit)"
+	@echo "  $(GREEN)status$(RESET)             - Show status of all Docker services"
+	@echo ""
+	@echo "$(YELLOW)Testing Commands:$(RESET)"
 	@echo "  $(GREEN)test:<model>$(RESET)       - Run tests for specific model"
 	@echo "  $(GREEN)test-integration$(RESET)   - Run all integration tests"
 	@echo "  $(GREEN)test-integration:<model>$(RESET) - Run integration tests for specific model"
+	@echo ""
+	@echo "$(YELLOW)Utility Commands:$(RESET)"
+	@echo "  $(GREEN)dist:<model>$(RESET)       - Create distribution package for model"
 	@echo "  $(GREEN)clean:<model>$(RESET)      - Clean artifacts for model"
 	@echo "  $(GREEN)list-models$(RESET)        - List all available models"
 	@echo "  $(GREEN)validate-model$(RESET)     - Validate model structure"
@@ -50,14 +61,15 @@ help:
 	fi
 	@echo ""
 	@echo "$(YELLOW)Examples:$(RESET)"
-	@echo "  make build:aya-expanse-8b"
-	@echo "  make docker:nllb"
-	@echo "  make docker-gpu:aya-expanse-8b"
-	@echo "  make docker-all:nllb"
-	@echo "  make test:all"
-	@echo "  make test-integration"
-	@echo "  make test-integration:aya-expanse-8b"
-	@echo "  make clean:aya-expanse-8b"
+	@echo "  make build:aya-expanse-8b           # Build dependencies"
+	@echo "  make deploy:aya-expanse-8b          # Build and start service"
+	@echo "  make logs:aya-expanse-8b            # View service logs"
+	@echo "  make restart:aya-expanse-8b         # Restart service"
+	@echo "  make stop:aya-expanse-8b            # Stop service"
+	@echo "  make status                         # Check all services"
+	@echo "  make docker-gpu:aya-expanse-8b      # Build GPU image"
+	@echo "  make test:all                       # Run all tests"
+	@echo "  make clean:aya-expanse-8b           # Clean artifacts"
 	@echo ""
 
 ## List all available models
@@ -363,3 +375,90 @@ test-integration\:%:
 		fi; \
 	fi; \
 	echo "$(GREEN)Integration tests completed for $$model$(RESET)"
+
+# =============================================================================
+# LOCAL DOCKER DEPLOYMENT COMMANDS
+# =============================================================================
+
+## Deploy model service locally (build and start)
+deploy\:%:
+	@model=$*; \
+	echo "$(BLUE)Deploying $$model service locally$(RESET)"; \
+	if [ ! -d "models/$$model" ]; then \
+		echo "$(RED)Error: Model directory models/$$model not found$(RESET)"; \
+		exit 1; \
+	fi; \
+	service_name=""; \
+	if [ "$$model" = "aya-expanse-8b" ]; then \
+		service_name="aya-service"; \
+	elif [ "$$model" = "nllb" ]; then \
+		service_name="nllb-service"; \
+	else \
+		echo "$(RED)Error: Unknown model $$model. Available: aya-expanse-8b, nllb$(RESET)"; \
+		exit 1; \
+	fi; \
+	echo "$(YELLOW)Building Docker image for $$model...$(RESET)"; \
+	$(MAKE) docker:$$model; \
+	echo "$(YELLOW)Starting $$service_name...$(RESET)"; \
+	docker compose -f docker-compose.single-model.yml up --build -d $$service_name; \
+	echo "$(GREEN)$$model service deployed and running on http://localhost:8000$(RESET)"; \
+	echo "$(YELLOW)Use 'make logs:$$model' to view logs$(RESET)"; \
+	echo "$(YELLOW)Use 'make stop:$$model' to stop the service$(RESET)"
+
+## Stop model service
+stop\:%:
+	@model=$*; \
+	echo "$(BLUE)Stopping $$model service$(RESET)"; \
+	service_name=""; \
+	if [ "$$model" = "aya-expanse-8b" ]; then \
+		service_name="aya-service"; \
+	elif [ "$$model" = "nllb" ]; then \
+		service_name="nllb-service"; \
+	else \
+		echo "$(RED)Error: Unknown model $$model. Available: aya-expanse-8b, nllb$(RESET)"; \
+		exit 1; \
+	fi; \
+	docker compose -f docker-compose.single-model.yml down $$service_name; \
+	echo "$(GREEN)$$model service stopped$(RESET)"
+
+## Restart model service
+restart\:%:
+	@model=$*; \
+	echo "$(BLUE)Restarting $$model service$(RESET)"; \
+	$(MAKE) stop:$$model; \
+	sleep 2; \
+	$(MAKE) deploy:$$model
+
+## Show service logs
+logs\:%:
+	@model=$*; \
+	echo "$(BLUE)Showing logs for $$model service (Ctrl+C to exit)$(RESET)"; \
+	service_name=""; \
+	if [ "$$model" = "aya-expanse-8b" ]; then \
+		service_name="aya-service"; \
+	elif [ "$$model" = "nllb" ]; then \
+		service_name="nllb-service"; \
+	else \
+		echo "$(RED)Error: Unknown model $$model. Available: aya-expanse-8b, nllb$(RESET)"; \
+		exit 1; \
+	fi; \
+	docker compose -f docker-compose.single-model.yml logs -f $$service_name
+
+## Show status of all Docker services
+status:
+	@echo "$(BLUE)Docker Services Status$(RESET)"
+	@echo ""
+	@echo "$(YELLOW)Running containers:$(RESET)"
+	@docker ps --filter "name=lingua-nexus" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "No containers running"
+	@echo ""
+	@echo "$(YELLOW)All lingua-nexus containers:$(RESET)"
+	@docker ps -a --filter "name=lingua-nexus" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "No containers found"
+	@echo ""
+	@echo "$(YELLOW)Available Docker compose services:$(RESET)"
+	@docker compose -f docker-compose.single-model.yml config --services 2>/dev/null || echo "Docker compose file not found"
+	@echo ""
+	@echo "$(YELLOW)Quick Actions:$(RESET)"
+	@echo "  make deploy:aya-expanse-8b    # Deploy Aya Expanse 8B"
+	@echo "  make deploy:nllb             # Deploy NLLB"
+	@echo "  make stop:aya-expanse-8b     # Stop Aya service"
+	@echo "  make logs:aya-expanse-8b     # View Aya logs"
