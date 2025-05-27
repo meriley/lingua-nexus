@@ -8,7 +8,7 @@ SetWorkingDir(A_ScriptDir)
 
 ; Configuration class with bidirectional support and adaptive translation
 class Config {
-    static TranslationServer := "http://localhost:8001"
+    static TranslationServer := "http://localhost:8000"
     static TranslationEndpoint := "/translate"
     static AdaptiveEndpoint := "/adaptive/translate"
     static ProgressiveEndpoint := "/adaptive/translate/progressive"

@@ -14,11 +14,11 @@ services:
       - LINGUA_NEXUS_MODEL=nllb
       - LINGUA_NEXUS_SERVER_TYPE=single-model
       - LINGUA_NEXUS_DEVICE=cpu
-      - API_KEY=test-api-key
+      - API_KEY=1234567
       - LINGUA_NEXUS_NLLB_MAX_LENGTH=512
       - LINGUA_NEXUS_NLLB_USE_PIPELINE=true
     ports:
-      - "8001:8000"
+      - "8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -39,12 +39,12 @@ services:
       - LINGUA_NEXUS_MODEL=aya-expanse-8b
       - LINGUA_NEXUS_SERVER_TYPE=single-model
       - LINGUA_NEXUS_DEVICE=cpu
-      - API_KEY=test-api-key
+      - API_KEY=1234567
       - LINGUA_NEXUS_AYA_MAX_LENGTH=3072
       - LINGUA_NEXUS_AYA_TEMPERATURE=0.1
       - LINGUA_NEXUS_AYA_GGUF_FILENAME=aya-expanse-8b-Q4_K_M.gguf
     ports:
-      - "8002:8000"
+      - "8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s

@@ -1,0 +1,51 @@
+# Ignore model caches and large files
+server/.cache/
+.cache/
+*.cache/
+
+# Ignore test reports and temporary files
+test_reports/
+*.log
+*.tmp
+
+# Ignore version control
+.git/
+.gitignore
+
+# Ignore documentation
+docs/
+*.md
+
+# Ignore CI/CD files
+.github/
+*.yml
+*.yaml
+
+# Ignore user scripts and development files
+userscripts/
+ahk/
+tests/
+performance_baselines/
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Ignore virtual environments
+venv/
+env/
+.env
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore OS files
+.DS_Store
+Thumbs.db

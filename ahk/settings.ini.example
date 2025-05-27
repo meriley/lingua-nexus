@@ -1,5 +1,5 @@
 [Server]
-TranslationServer=http://localhost:8001
+TranslationServer=http://localhost:8000
 APIKey=1234567
 
 [Translation]

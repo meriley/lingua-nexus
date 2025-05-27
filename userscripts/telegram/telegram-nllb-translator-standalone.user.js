@@ -501,7 +501,7 @@
     
     // Configuration with bidirectional support and adaptive translation
     const CONFIG = {
-        translationServer: 'http://localhost:8001',
+        translationServer: 'http://localhost:8000',
         translationEndpoint: '/translate',
         adaptiveEndpoint: '/adaptive/translate',
         progressiveEndpoint: '/adaptive/translate/progressive',

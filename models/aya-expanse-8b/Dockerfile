@@ -84,6 +84,7 @@ COPY models/base/ ./models/base/
 COPY models/aya-expanse-8b/ ./models/aya-expanse-8b/
 COPY models/__init__.py ./models/
 COPY server/app/ ./server/app/
+COPY server/__init__.py ./server/
 
 # Create cache directories with proper permissions
 RUN mkdir -p /app/.cache/huggingface \
@@ -106,8 +107,9 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=240s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Set default command with proper module path
-CMD ["python", "-m", "server.app.main"]
+# Set PYTHONPATH and run Aya model server
+ENV PYTHONPATH=/app
+CMD ["python", "-m", "server.app.main_aya"]
 
 # Comprehensive metadata labels
 LABEL maintainer="Lingua Nexus Team" \
