@@ -1,0 +1,17 @@
+[Server]
+TranslationServer=http://localhost:8001
+APIKey=1234567
+
+[Translation]
+DefaultTargetLang=eng_Latn
+
+[Hotkeys]
+TranslateSelection=^!t
+TranslateClipboard=^+c
+
+[UI]
+ShowNotifications=1
+
+[Advanced]
+TryDirectInput=1
+UseFallbackClipboard=1

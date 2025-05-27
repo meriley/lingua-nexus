@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - test-network
+
+  translator:
+    build: 
+      context: ./server
+      dockerfile: Dockerfile
+    environment:
+      - API_KEY=${API_KEY:-test-key-12345}
+      - MODEL_CACHE_DIR=/app/models
+      - REDIS_URL=redis://redis:6379/1
+      - RATE_LIMIT_ENABLED=true
+      - RATE_LIMIT_REQUESTS=100
+      - RATE_LIMIT_WINDOW=60
+      - HF_TOKEN=${HF_TOKEN:-test-token}
+      - NLLB_MODEL=${NLLB_MODEL:-facebook/nllb-200-distilled-600M}
+      - AYA_MODEL=${AYA_MODEL:-CohereForAI/aya-101}
+      - TESTING=false  # Enable rate limiting for integration tests
+    volumes:
+      - test-models:/app/models
+      - ./test-data:/app/test-data
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge
+
+volumes:
+  test-models:
+  test-data:

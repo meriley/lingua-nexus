@@ -1,0 +1,102 @@
+services:
+  # NLLB-only server (optimized, default profile)
+  nllb-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    image: nllb-translation-server
+    container_name: nllb-translation-server
+    restart: unless-stopped
+    profiles: ["nllb", "default", ""]
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./server:/app
+      - nllb-cache:/app/.cache  # Cache Hugging Face models
+    environment:
+      - API_KEY=1234567
+      - MODEL_TYPE=nllb
+      - ENABLE_MULTIMODEL=false
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          cpus: '4.0'
+          memory: 6G
+    command: python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  # Aya-only server (using Ubuntu-based GGUF image)
+  aya-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.aya-ubuntu
+    image: aya-translation-server
+    container_name: aya-translation-server
+    restart: unless-stopped
+    profiles: ["aya"]
+    ports:
+      - "8001:8000"
+    volumes:
+      - aya-cache:/app/.cache  # Cache Hugging Face models and GGUF files
+    environment:
+      - API_KEY=1234567
+      - HUGGINGFACE_HUB_TOKEN=${HUGGINGFACE_HUB_TOKEN}
+      - MODEL_PATH=bartowski/aya-expanse-8b-GGUF
+      - MODEL_TYPE=aya
+      - USE_GGUF=true
+      - GGUF_FILENAME=aya-expanse-8b-Q4_K_M.gguf
+      - FORCE_CPU=false
+      - DEVICE=cuda
+      - N_GPU_LAYERS=20
+      - TEMPERATURE=0.1
+      - TOP_P=0.9
+      - MAX_LENGTH=3072
+      - N_CTX=8192
+      - REDIS_URL=redis://redis:6379
+      - HF_HOME=/app/.cache/huggingface
+      - TRANSFORMERS_CACHE=/app/.cache/huggingface/transformers
+      - TORCH_HOME=/app/.cache/torch
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          cpus: '6.0'
+          memory: 10G
+    command: python -m uvicorn app.main_aya:app --host 0.0.0.0 --port 8000
+
+  # Redis cache for adaptive translation system
+  redis:
+    image: redis:7-alpine
+    container_name: translation-redis
+    restart: unless-stopped
+    profiles: ["nllb", "aya", "default", ""]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 1gb --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+
+volumes:
+  nllb-cache:  # Persistent volume for NLLB model cache
+  aya-cache:   # Persistent volume for Aya model cache (GGUF files)
+  redis-data:  # Persistent volume for Redis cache data

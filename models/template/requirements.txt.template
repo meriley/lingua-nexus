@@ -1,0 +1,25 @@
+# Base requirements for {MODEL_NAME} model
+# Generated from template - customize for specific model needs
+
+# Core dependencies
+torch>=2.0.0
+transformers>=4.30.0
+tokenizers>=0.13.0
+pydantic>=2.0.0
+
+# Logging and utilities
+logging>=0.4.9.6
+
+# Optional accelerators (uncomment as needed)
+# accelerate>=0.20.0
+# bitsandbytes>=0.41.0
+
+# Model-specific dependencies
+{MODEL_SPECIFIC_REQUIREMENTS}
+
+# Development dependencies (optional)
+# pytest>=7.0.0
+# pytest-asyncio>=0.21.0
+# black>=23.0.0
+# flake8>=6.0.0
+# mypy>=1.0.0

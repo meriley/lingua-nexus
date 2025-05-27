@@ -1,0 +1,117 @@
+"""
+Configuration for {MODEL_NAME} model implementation.
+
+This module defines the configuration class and default settings for
+the {MODEL_NAME} model in the single-model architecture.
+"""
+
+import os
+from typing import Dict, List, Any, Optional
+from dataclasses import dataclass, field
+
+
+@dataclass
+class {MODEL_CLASS_NAME}Config:
+    """Configuration for {MODEL_NAME} model."""
+    
+    # Model identification
+    model_name: str = "{MODEL_NAME}"
+    model_version: str = "1.0.0"
+    
+    # Model path and loading
+    model_path: str = "{DEFAULT_MODEL_PATH}"
+    device: str = "auto"  # "cpu", "cuda", "auto"
+    device_map: Optional[str] = None
+    
+    # Model parameters
+    max_length: int = 512
+    temperature: float = 0.7
+    top_p: float = 0.9
+    do_sample: bool = True
+    
+    # Performance settings
+    batch_size: int = 1
+    num_beams: int = 1
+    use_cache: bool = True
+    
+    # Resource requirements
+    memory_requirements: str = "{MEMORY_REQUIREMENTS}"
+    
+    # Supported languages (ISO 639-1 codes)
+    supported_languages: List[str] = field(default_factory=lambda: [
+        # TODO: Add supported language codes
+        "en", "fr", "es", "de", "it", "pt", "ru", "zh", "ja", "ko"
+    ])
+    
+    # Model-specific options
+    model_options: Dict[str, Any] = field(default_factory=dict)
+    
+    @classmethod
+    def from_dict(cls, config_dict: Dict[str, Any]) -> '{MODEL_CLASS_NAME}Config':
+        """
+        Create configuration from dictionary.
+        
+        Args:
+            config_dict: Configuration dictionary
+            
+        Returns:
+            {MODEL_CLASS_NAME}Config instance
+        """
+        # Override with environment variables if set
+        env_overrides = cls._get_env_overrides()
+        config_dict.update(env_overrides)
+        
+        return cls(**{{k: v for k, v in config_dict.items() if hasattr(cls, k)}})
+    
+    @classmethod
+    def _get_env_overrides(cls) -> Dict[str, Any]:
+        """Get configuration overrides from environment variables."""
+        env_overrides = {{}}
+        
+        # Model path override
+        if model_path := os.getenv("LINGUA_NEXUS_{MODEL_ENV_PREFIX}_MODEL_PATH"):
+            env_overrides["model_path"] = model_path
+        
+        # Device override
+        if device := os.getenv("LINGUA_NEXUS_DEVICE"):
+            env_overrides["device"] = device
+        
+        # Max length override
+        if max_length := os.getenv("LINGUA_NEXUS_{MODEL_ENV_PREFIX}_MAX_LENGTH"):
+            try:
+                env_overrides["max_length"] = int(max_length)
+            except ValueError:
+                pass
+        
+        # Temperature override
+        if temperature := os.getenv("LINGUA_NEXUS_{MODEL_ENV_PREFIX}_TEMPERATURE"):
+            try:
+                env_overrides["temperature"] = float(temperature)
+            except ValueError:
+                pass
+        
+        return env_overrides
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert configuration to dictionary."""
+        return {{
+            "model_name": self.model_name,
+            "model_version": self.model_version,
+            "model_path": self.model_path,
+            "device": self.device,
+            "device_map": self.device_map,
+            "max_length": self.max_length,
+            "temperature": self.temperature,
+            "top_p": self.top_p,
+            "do_sample": self.do_sample,
+            "batch_size": self.batch_size,
+            "num_beams": self.num_beams,
+            "use_cache": self.use_cache,
+            "memory_requirements": self.memory_requirements,
+            "supported_languages": self.supported_languages,
+            "model_options": self.model_options
+        }}
+    
+    def __str__(self) -> str:
+        """String representation of configuration."""
+        return f"{MODEL_CLASS_NAME}Config(model_path={{self.model_path}}, device={{self.device}}, max_length={{self.max_length}})"

@@ -1,0 +1,68 @@
+# Aya-only optimized Docker image with GGUF support
+FROM pytorch/pytorch:2.1.0-cuda11.8-cudnn8-devel
+
+# Set working directory
+WORKDIR /app
+
+# Set environment variables to avoid interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# Configure timezone first
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# Install system dependencies for GGUF compilation
+RUN apt-get update && apt-get install -y \
+    wget \
+    curl \
+    git \
+    cmake \
+    build-essential \
+    libgomp1 \
+    libopenblas-dev \
+    pkg-config \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Aya-specific requirements first (for better caching)
+COPY requirements-aya.txt .
+
+# Copy only essential application code
+COPY app/ ./app/
+COPY *.py ./
+
+# Create non-root user
+RUN useradd -m -u 1000 aya
+
+# Set environment for compilation
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH=${CUDA_HOME}/bin:${PATH}
+# Disable CUDA during build (will use CPU, but can offload at runtime)
+ENV GGML_CUDA=0
+ENV CMAKE_ARGS="-DGGML_CUDA=off"
+
+# Install Python dependencies first
+RUN pip install --no-cache-dir -r requirements-aya.txt
+
+# Try to install pre-compiled llama-cpp-python wheel for CPU
+RUN pip install --upgrade pip
+RUN pip install llama-cpp-python==0.2.95 --only-binary=all --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu || \
+    pip install llama-cpp-python --no-deps
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV HF_HOME=/app/.cache/huggingface
+ENV MODEL_TYPE=aya
+ENV ENABLE_MULTIMODEL=false
+ENV USE_GGUF=true
+ENV GGUF_FILENAME=aya-expanse-8b-Q4_K_M.gguf
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Start Aya server with permission fix
+CMD ["sh", "-c", "mkdir -p /app/.cache/huggingface && chown -R aya:aya /app/.cache && su aya -c 'python -m uvicorn app.main_aya:app --host 0.0.0.0 --port 8000'"]

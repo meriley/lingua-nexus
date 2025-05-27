@@ -1,0 +1,30 @@
+# Aya Expanse 8B model requirements
+# Optimized for GGUF format with transformers fallback
+
+# Core dependencies
+torch>=2.0.0
+transformers>=4.30.0
+tokenizers>=0.13.0
+pydantic>=2.0.0
+
+# HuggingFace ecosystem
+huggingface-hub>=0.16.0
+accelerate>=0.20.0
+
+# GGUF support (primary format)
+llama-cpp-python>=0.2.0
+
+# Quantization support (fallback)
+bitsandbytes>=0.41.0
+
+# Utilities
+numpy>=1.21.0
+torch-audio>=2.0.0
+
+# Optional GPU acceleration
+# Uncomment if using CUDA-enabled llama-cpp-python
+# llama-cpp-python[cublas]>=0.2.0
+
+# Development dependencies (optional)
+# pytest>=7.0.0
+# pytest-asyncio>=0.21.0

@@ -1,0 +1,377 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - smoke
+          - performance
+          - parallel
+      model_tests:
+        description: 'Model tests to include'
+        required: false
+        default: 'nllb'
+        type: choice
+        options:
+          - nllb
+          - aya
+          - both
+      parallel_workers:
+        description: 'Number of parallel workers'
+        required: false
+        default: '2'
+        type: string
+
+env:
+  PYTHON_VERSION: '3.11'
+  CACHE_KEY_SUFFIX: 'v1'
+  E2E_TIMEOUT: '7200'  # 2 hours for full test suite
+  MODEL_CACHE_DIR: '/tmp/e2e_model_cache'
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      test-matrix: ${{ steps.matrix.outputs.matrix }}
+      cache-key: ${{ steps.cache-key.outputs.key }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate test matrix
+        id: matrix
+        run: |
+          # Determine test configuration based on inputs
+          if [ "${{ github.event.inputs.test_suite }}" = "smoke" ]; then
+            echo 'matrix={"test-type": ["smoke"], "parallel": [1]}' >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.inputs.test_suite }}" = "performance" ]; then
+            echo 'matrix={"test-type": ["performance"], "parallel": [1]}' >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.inputs.test_suite }}" = "parallel" ]; then
+            echo 'matrix={"test-type": ["parallel"], "parallel": [2, 4]}' >> $GITHUB_OUTPUT
+          else
+            echo 'matrix={"test-type": ["smoke", "unit", "integration", "performance"], "parallel": [1, 2]}' >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate cache key
+        id: cache-key
+        run: |
+          echo "key=e2e-models-${{ runner.os }}-${{ hashFiles('server/requirements*.txt') }}-${{ env.CACHE_KEY_SUFFIX }}" >> $GITHUB_OUTPUT
+
+  test-infrastructure:
+    runs-on: ubuntu-latest
+    needs: setup
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('server/requirements*.txt') }}
+          restore-keys: |
+            pip-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
+
+      - name: Install dependencies
+        run: |
+          cd server
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+          pip install pytest-xdist pytest-cov
+
+      - name: Test retry mechanisms
+        run: |
+          cd server
+          python -m pytest ../tests/e2e/test_retry_mechanisms.py -v --tb=short
+
+      - name: Test parallel execution infrastructure
+        run: |
+          cd server
+          python -m pytest ../tests/e2e/test_parallel_execution.py -v --tb=short
+
+      - name: Test parallel execution with xdist
+        run: |
+          cd server
+          python -m pytest ../tests/e2e/test_retry_mechanisms.py -n 2 -v --tb=short
+
+  smoke-tests:
+    runs-on: ubuntu-latest
+    needs: [setup, test-infrastructure]
+    timeout-minutes: 60
+    strategy:
+      matrix: ${{ fromJson(needs.setup.outputs.test-matrix) }}
+      fail-fast: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('server/requirements*.txt') }}
+
+      - name: Cache model files
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.MODEL_CACHE_DIR }}
+          key: ${{ needs.setup.outputs.cache-key }}
+          restore-keys: |
+            e2e-models-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          cd server
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+          pip install pytest-xdist pytest-cov pytest-timeout
+
+      - name: Run smoke tests
+        if: matrix.test-type == 'smoke'
+        run: |
+          cd server
+          python -m pytest ../tests/e2e/ -m smoke -v --tb=short --timeout=300
+
+      - name: Run unit tests
+        if: matrix.test-type == 'unit'
+        run: |
+          cd server
+          python -m pytest ../tests/e2e/test_retry_mechanisms.py ../tests/e2e/test_parallel_execution.py -v --tb=short
+
+      - name: Run integration tests
+        if: matrix.test-type == 'integration'
+        timeout-minutes: 90
+        run: |
+          cd server
+          # Run lighter integration tests that don't require full model loading
+          python -m pytest ../tests/e2e/ -m "not slow and not performance" -v --tb=short --timeout=600
+
+      - name: Run performance tests
+        if: matrix.test-type == 'performance'
+        timeout-minutes: 120
+        run: |
+          cd server
+          python -m pytest ../tests/e2e/performance/ -v --tb=short --timeout=1200
+
+      - name: Run parallel tests
+        if: matrix.test-type == 'parallel'
+        run: |
+          cd server
+          python -m pytest ../tests/e2e/test_retry_mechanisms.py ../tests/e2e/test_parallel_execution.py -n ${{ matrix.parallel }} -v --tb=short
+
+  model-tests:
+    runs-on: ubuntu-latest
+    needs: [setup, test-infrastructure]
+    if: github.event_name == 'schedule' || github.event.inputs.model_tests != ''
+    timeout-minutes: 180  # 3 hours for model tests
+    strategy:
+      matrix:
+        model: [nllb]  # Start with NLLB only, add Aya when resources allow
+      fail-fast: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache model files
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.MODEL_CACHE_DIR }}
+          key: ${{ needs.setup.outputs.cache-key }}-${{ matrix.model }}
+          restore-keys: |
+            ${{ needs.setup.outputs.cache-key }}-
+            e2e-models-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          cd server
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+          pip install pytest-timeout
+
+      - name: Run NLLB model tests
+        if: matrix.model == 'nllb'
+        run: |
+          cd server
+          python -m pytest ../tests/e2e/ -m nllb -v --tb=short --timeout=1800
+
+      - name: Run Aya model tests
+        if: matrix.model == 'aya'
+        run: |
+          cd server
+          python -m pytest ../tests/e2e/ -m aya -v --tb=short --timeout=3600
+
+      - name: Generate performance report
+        if: always()
+        run: |
+          # Collect performance reports
+          mkdir -p performance-reports
+          find . -name "*performance*.json" -exec cp {} performance-reports/ \;
+          find . -name "*baseline*.json" -exec cp {} performance-reports/ \;
+          find . -name "*memory*.json" -exec cp {} performance-reports/ \;
+
+      - name: Upload performance reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-reports-${{ matrix.model }}
+          path: performance-reports/
+          retention-days: 30
+
+  performance-analysis:
+    runs-on: ubuntu-latest
+    needs: [model-tests]
+    if: always() && (github.event_name == 'schedule' || contains(github.event.inputs.test_suite, 'performance'))
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download performance reports
+        uses: actions/download-artifact@v3
+        with:
+          path: all-performance-reports
+
+      - name: Analyze performance regression
+        run: |
+          python3 << 'EOF'
+          import json
+          import os
+          from pathlib import Path
+
+          def analyze_performance_reports():
+              reports_dir = Path("all-performance-reports")
+              print("=== Performance Analysis ===")
+              
+              for report_file in reports_dir.rglob("*.json"):
+                  try:
+                      with open(report_file) as f:
+                          data = json.load(f)
+                      
+                      print(f"\nReport: {report_file.name}")
+                      
+                      # Analyze different report types
+                      if "baseline" in report_file.name:
+                          print("  Type: Model Loading Baseline")
+                          if "analysis" in data:
+                              for model, analysis in data["analysis"].items():
+                                  if "loading_time_stats" in analysis:
+                                      stats = analysis["loading_time_stats"]
+                                      print(f"    {model}: {stats['mean_duration_seconds']:.1f}s ± {stats['std_dev_seconds']:.1f}s")
+                      
+                      elif "memory" in report_file.name:
+                          print("  Type: Memory Monitoring")
+                          if "memory_statistics" in data and "process_memory" in data["memory_statistics"]:
+                              rss = data["memory_statistics"]["process_memory"]["rss_mb"]
+                              print(f"    Peak RSS: {rss['max']:.1f} MB")
+                              print(f"    RSS Growth: {rss['growth']:.1f} MB")
+                      
+                      elif "performance" in report_file.name:
+                          print("  Type: Inference Performance")
+                          # Add inference performance analysis here
+                      
+                  except Exception as e:
+                      print(f"  Error analyzing {report_file}: {e}")
+
+          analyze_performance_reports()
+          EOF
+
+      - name: Comment performance results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // This would read performance analysis and post as PR comment
+            // Implementation depends on specific performance metrics to track
+            console.log('Performance analysis completed - see job logs for details');
+
+  security-scan:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run security scan
+        uses: github/super-linter@v4
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_PYTHON_BLACK: false
+          VALIDATE_PYTHON_FLAKE8: true
+          VALIDATE_PYTHON_PYLINT: false
+
+  cleanup:
+    runs-on: ubuntu-latest
+    needs: [smoke-tests, model-tests]
+    if: always()
+    steps:
+      - name: Cleanup old artifacts
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Clean up old performance reports (keep last 10)
+            const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId,
+            });
+            
+            console.log(`Found ${artifacts.total_count} artifacts for this run`);
+
+  summary:
+    runs-on: ubuntu-latest
+    needs: [test-infrastructure, smoke-tests, model-tests, performance-analysis]
+    if: always()
+    steps:
+      - name: Test Summary
+        run: |
+          echo "=== E2E Test Results Summary ==="
+          echo "Infrastructure Tests: ${{ needs.test-infrastructure.result }}"
+          echo "Smoke Tests: ${{ needs.smoke-tests.result }}"
+          echo "Model Tests: ${{ needs.model-tests.result }}"
+          echo "Performance Analysis: ${{ needs.performance-analysis.result }}"
+          echo
+          if [ "${{ needs.test-infrastructure.result }}" = "failure" ] || [ "${{ needs.smoke-tests.result }}" = "failure" ]; then
+            echo "❌ Critical tests failed"
+            exit 1
+          elif [ "${{ needs.model-tests.result }}" = "failure" ]; then
+            echo "⚠️  Model tests failed but infrastructure is stable"
+            exit 0
+          else
+            echo "✅ All tests passed"
+            exit 0
+          fi

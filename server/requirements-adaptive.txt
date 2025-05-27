@@ -1,0 +1,10 @@
+# Adaptive Translation Chunking System Dependencies
+sentence-transformers>=2.2.0  # For semantic similarity and discourse analysis
+redis>=4.5.0                  # Multi-level caching infrastructure
+prometheus-client>=0.16.0     # Metrics collection and monitoring
+nltk>=3.8                     # Natural language processing for chunking
+numpy>=1.24.0                 # Numerical operations for quality scoring
+scikit-learn>=1.3.0          # ML utilities for quality assessment
+asyncio-throttle>=1.0.2      # Rate limiting and throttling
+aioredis>=2.0.0               # Async Redis client
+psutil>=5.9.0                 # System resource monitoring

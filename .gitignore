@@ -1,0 +1,116 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Python
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Cache directories
+.cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Docker
+.dockerignore
+
+# Node modules (for userscript testing)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage reports
+coverage/
+*.lcov
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# Model cache
+.transformers_cache/
+.huggingface/
+
+# PyTorch model files (if stored locally)
+*.pt
+*.pth
+*.bin
+
+# AutoHotkey compiled files
+*.exe
+
+# Test outputs
+test_reports/
+.coverage.*
+
+# Claude
+**/.plans/
+**/.prompts/
+.claude
+
+# Sensitive data protection
+*.env.multimodel
+**/HF_TOKEN*
+**/API_KEY*
+**/*token*
+**/*secret*
+**/*password*
+
+# Additional cache and temporary directories
+userscript/coverage/
+test_reports/
+.pytest_cache/
+**/.pytest_cache/

@@ -1,0 +1,15 @@
+[Unit]
+Description=NLLB Translation Server
+After=network.target
+
+[Service]
+User=nllb-service
+Group=nllb-service
+WorkingDirectory=/opt/tg-text-translate/server
+Environment="PATH=/opt/tg-text-translate/venv/bin"
+ExecStart=/opt/tg-text-translate/venv/bin/python server.py
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

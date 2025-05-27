@@ -1,0 +1,87 @@
+```
+Multi-Model Translation System Architecture (Text Diagram)
+
++-----------------------------------------------------------------------+
+|                        Client Applications                            |
+|  +---------------------------+  +----------------------------------+  |
+|  | Browser UserScript        |  | AutoHotkey Desktop Application |  |
+|  | - Telegram Web Integration|  | - System-wide Translation      |  |
+|  | - Progressive Translation |  | - Multi-Model Hotkeys          |  |
+|  | - Real-time Feedback      |  | - Context Detection            |  |
+|  +---------------------------+  +----------------------------------+  |
++-----------------------------------------------------------------------+
+                                    |
+                              HTTPS/API Requests
+                                    |
+                                    v
++-----------------------------------------------------------------------+
+|                     Load Balancer & Security                         |
+|  +---------------------------+  +----------------------------------+  |
+|  | nginx Load Balancer       |  | WAF & DDoS Protection          |  |
+|  | - Model-Aware Routing     |  | - API-Specific Filtering       |  |
+|  | - SSL Termination         |  | - Rate Limiting                |  |
+|  +---------------------------+  +----------------------------------+  |
++-----------------------------------------------------------------------+
+                                    |
+                              Route by API Tier
+                                    |
+                                    v
++-----------------------------------------------------------------------+
+|                       Multi-Tier API Services                        |
+|  +------------------+  +------------------+  +-------------------+   |
+|  | Legacy NLLB API  |  | Multi-Model API  |  | Adaptive API      |   |
+|  | Port 8001        |  | Port 8003        |  | Port 8003         |   |
+|  | - Backward Compat|  | - Model Selection|  | - Intelligent     |   |
+|  | - 4 Endpoints    |  | - 8 Endpoints    |  |   Processing      |   |
+|  |                  |  |                  |  | - 9 Endpoints     |   |
+|  +------------------+  +------------------+  +-------------------+   |
++-----------------------------------------------------------------------+
+                                    |
+                              Model Requests
+                                    |
+                                    v
++-----------------------------------------------------------------------+
+|                         Model Registry & Factory                     |
+|  +---------------------------+  +----------------------------------+  |
+|  | Dynamic Model Management  |  | Model Factory Pattern          |  |
+|  | - Lazy Loading            |  | - NLLB: Specialized Translation|  |
+|  | - Capability Discovery   |  | - Aya: Context-Aware LLM       |  |
+|  | - Resource Optimization  |  | - Multi-Model Orchestration    |  |
+|  +---------------------------+  +----------------------------------+  |
++-----------------------------------------------------------------------+
+                                    |
+                              Processing Pipeline
+                                    |
+                                    v
++-----------------------------------------------------------------------+
+|                      Adaptive Processing Engine                      |
+|  +------------------+  +------------------+  +-------------------+   |
+|  | Semantic Chunker |  | Quality Assessment|  | Binary Search     |   |
+|  | - Text Segmentation|  | - Multi-Dimensional|  | Optimizer         |   |
+|  | - Context Preservation| - Fluency/Accuracy | - Chunk Size Tuning |   |
+|  | - Boundary Detection | - Consistency Check | - Performance Opt. |   |
+|  +------------------+  +------------------+  +-------------------+   |
++-----------------------------------------------------------------------+
+                                    |
+                              Results & Caching
+                                    |
+                                    v
++-----------------------------------------------------------------------+
+|                     Infrastructure & Monitoring                      |
+|  +------------------+  +------------------+  +-------------------+   |
+|  | Redis Cluster    |  | Performance Monitor|  | Docker Services   |   |
+|  | - Translation Cache| - Quality Metrics   | - Multi-Container   |   |
+|  | - Quality Cache  |  | - Response Times   | - Service Isolation |   |
+|  | - Distributed TTL|  | - Error Tracking   | - Resource Limits   |   |
+|  +------------------+  +------------------+  +-------------------+   |
++-----------------------------------------------------------------------+
+
+Key Features:
+✓ Three-tier API architecture (Legacy, Multi-Model, Adaptive)
+✓ Dynamic model registry with NLLB and Aya Expanse 8B support
+✓ Intelligent semantic chunking with quality assessment
+✓ Progressive translation with real-time streaming
+✓ Redis-backed caching with quality-aware TTL
+✓ Comprehensive monitoring and performance optimization
+✓ Multi-platform client support with adaptive UI
+```

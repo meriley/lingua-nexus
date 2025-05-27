@@ -1,0 +1,14 @@
+# NLLB-only optimized dependencies
+fastapi==0.95.1
+uvicorn==0.22.0
+pydantic==1.10.7
+transformers>=4.36.0,<4.41.0
+torch>=2.1.0,<2.2.0
+sentencepiece==0.1.99
+slowapi==0.1.7
+python-dotenv==1.0.0
+python-multipart==0.0.6
+typing_extensions>=4.4.0
+accelerate>=0.18.0
+tokenizers>=0.15.0
+# Note: bitsandbytes removed for NLLB-only build (NLLB doesn't need quantization)

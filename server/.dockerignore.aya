@@ -1,0 +1,41 @@
+# Aya-specific dockerignore to reduce build context
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.git
+**/.gitignore
+**/.DS_Store
+**/.vscode
+**/.pytest_cache
+**/node_modules
+**/tests
+**/test_reports
+**/.cache
+**/.tmp
+**/coverage
+**/*.log
+
+# Exclude model cache directories
+**/.cache/huggingface
+**/models/cached
+**/test-data
+
+# Exclude unnecessary files
+README.md
+CONTRIBUTING.md
+docs/
+ahk/
+userscript/
+multimodel_e2e_tests/
+multimodel_e2e_tests_real/
+run_*.sh
+*.yml
+docker-compose.yml
+install.sh
+
+# Keep only essential server files
+!app/
+!requirements-aya.txt
+!*.py
+!systemd/

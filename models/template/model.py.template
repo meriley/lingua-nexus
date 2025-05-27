@@ -1,0 +1,160 @@
+"""
+{MODEL_NAME} model implementation for the single-model translation architecture.
+
+This module provides the {MODEL_NAME} model implementation that integrates
+with the enhanced TranslationModel interface for single-model-per-instance deployment.
+"""
+
+import logging
+from typing import Dict, List, Optional, Any
+
+from models.base import (
+    TranslationModel,
+    ModelInfo,
+    ModelInitializationError,
+    TranslationError,
+    UnsupportedLanguageError,
+    ResourceError,
+    ModelNotReadyError
+)
+from .config import {MODEL_CLASS_NAME}Config
+
+logger = logging.getLogger(__name__)
+
+
+class {MODEL_CLASS_NAME}Model(TranslationModel):
+    """
+    {MODEL_NAME} model implementation.
+    
+    This class implements the TranslationModel interface for {MODEL_NAME}
+    in a single-model-per-instance architecture.
+    """
+    
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        """
+        Initialize {MODEL_NAME} model.
+        
+        Args:
+            config: Optional configuration dictionary
+        """
+        self.config = {MODEL_CLASS_NAME}Config.from_dict(config or {})
+        self.model = None
+        self.tokenizer = None
+        self._initialized = False
+        self._model_info = None
+        
+        logger.info(f"Initializing {MODEL_NAME} model with config: {{self.config}}")
+    
+    async def initialize(self) -> None:
+        """Initialize model resources (weights, tokenizer, etc.)."""
+        try:
+            logger.info(f"Loading {MODEL_NAME} model from {{self.config.model_path}}")
+            
+            # TODO: Implement model loading logic
+            # Example:
+            # self.tokenizer = AutoTokenizer.from_pretrained(self.config.model_path)
+            # self.model = AutoModelForSeq2SeqLM.from_pretrained(
+            #     self.config.model_path,
+            #     device_map=self.config.device_map,
+            #     torch_dtype=self.config.torch_dtype
+            # )
+            
+            self._initialized = True
+            logger.info(f"{MODEL_NAME} model initialized successfully")
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize {MODEL_NAME} model: {{e}}")
+            raise ModelInitializationError(f"Failed to load model: {{e}}", "{MODEL_NAME}")
+    
+    async def translate(self, text: str, source_lang: str, target_lang: str) -> str:
+        """
+        Perform text translation.
+        
+        Args:
+            text: Input text to translate
+            source_lang: Source language code (ISO 639-1)
+            target_lang: Target language code (ISO 639-1)
+            
+        Returns:
+            Translated text string
+        """
+        if not self._initialized:
+            raise ModelNotReadyError("Model not initialized", "{MODEL_NAME}")
+        
+        # Validate language support
+        if not self._supports_language_pair(source_lang, target_lang):
+            raise UnsupportedLanguageError(source_lang, target_lang, "{MODEL_NAME}")
+        
+        try:
+            logger.debug(f"Translating text from {{source_lang}} to {{target_lang}}")
+            
+            # TODO: Implement translation logic
+            # Example:
+            # inputs = self.tokenizer.encode(text, return_tensors="pt")
+            # outputs = self.model.generate(inputs, max_length=self.config.max_length)
+            # translated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+            
+            # Placeholder implementation
+            translated_text = f"[{MODEL_NAME} Translation] {{text}}"
+            
+            logger.debug(f"Translation completed: {{translated_text[:100]}}")
+            return translated_text
+            
+        except Exception as e:
+            logger.error(f"Translation failed: {{e}}")
+            raise TranslationError(f"Translation failed: {{e}}", "{MODEL_NAME}")
+    
+    async def health_check(self) -> bool:
+        """Verify model readiness for inference."""
+        try:
+            if not self._initialized:
+                return False
+            
+            # TODO: Implement health check logic
+            # Example: perform a quick test translation
+            # test_result = await self.translate("test", "en", "fr")
+            # return bool(test_result)
+            
+            return True
+            
+        except Exception as e:
+            logger.warning(f"Health check failed: {{e}}")
+            return False
+    
+    def get_model_info(self) -> ModelInfo:
+        """Return model metadata and capabilities."""
+        if self._model_info is None:
+            self._model_info = ModelInfo(
+                name="{MODEL_NAME}",
+                version=self.config.model_version,
+                supported_languages=self.config.supported_languages,
+                max_tokens=self.config.max_length,
+                memory_requirements=self.config.memory_requirements,
+                description=f"{MODEL_NAME} translation model"
+            )
+        return self._model_info
+    
+    async def cleanup(self) -> None:
+        """Clean up model resources."""
+        try:
+            logger.info(f"Cleaning up {MODEL_NAME} model resources")
+            
+            # TODO: Implement cleanup logic
+            # Example:
+            # if self.model is not None:
+            #     del self.model
+            #     self.model = None
+            # if self.tokenizer is not None:
+            #     del self.tokenizer
+            #     self.tokenizer = None
+            
+            self._initialized = False
+            logger.info(f"{MODEL_NAME} model cleanup completed")
+            
+        except Exception as e:
+            logger.warning(f"Error during cleanup: {{e}}")
+    
+    def _supports_language_pair(self, source_lang: str, target_lang: str) -> bool:
+        """Check if model supports the given language pair."""
+        supported = self.config.supported_languages
+        return source_lang in supported and target_lang in supported

@@ -1,0 +1,79 @@
+# Docker Compose configuration for Single-Model Architecture Testing
+# This configuration demonstrates the new single-model-per-instance pattern
+
+version: '3.8'
+
+services:
+  # NLLB single-model instance
+  nllb-service:
+    build:
+      context: .
+      dockerfile: models/nllb/Dockerfile
+    container_name: lingua-nexus-nllb
+    environment:
+      - LINGUA_NEXUS_MODEL=nllb
+      - LINGUA_NEXUS_SERVER_TYPE=single-model
+      - LINGUA_NEXUS_DEVICE=cpu
+      - API_KEY=test-api-key
+      - LINGUA_NEXUS_NLLB_MAX_LENGTH=512
+      - LINGUA_NEXUS_NLLB_USE_PIPELINE=true
+    ports:
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    restart: unless-stopped
+    networks:
+      - lingua-nexus
+
+  # Aya Expanse 8B single-model instance
+  aya-service:
+    build:
+      context: .
+      dockerfile: models/aya-expanse-8b/Dockerfile
+    container_name: lingua-nexus-aya
+    environment:
+      - LINGUA_NEXUS_MODEL=aya-expanse-8b
+      - LINGUA_NEXUS_SERVER_TYPE=single-model
+      - LINGUA_NEXUS_DEVICE=cpu
+      - API_KEY=test-api-key
+      - LINGUA_NEXUS_AYA_MAX_LENGTH=3072
+      - LINGUA_NEXUS_AYA_TEMPERATURE=0.1
+      - LINGUA_NEXUS_AYA_GGUF_FILENAME=aya-expanse-8b-Q4_K_M.gguf
+    ports:
+      - "8002:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 180s
+    restart: unless-stopped
+    networks:
+      - lingua-nexus
+
+  # Nginx load balancer (optional - for demonstration)
+  nginx:
+    image: nginx:alpine
+    container_name: lingua-nexus-lb
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - nllb-service
+      - aya-service
+    restart: unless-stopped
+    networks:
+      - lingua-nexus
+
+networks:
+  lingua-nexus:
+    driver: bridge
+
+volumes:
+  model-cache:
+    driver: local

@@ -1,0 +1,65 @@
+# Multi-stage Dockerfile template for {MODEL_NAME} model
+# Generated from template - customize for specific model requirements
+
+# Stage 1: Base image with Python and dependencies
+FROM python:3.10-slim as base
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV LINGUA_NEXUS_MODEL={MODEL_NAME}
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash lingua
+
+# Set working directory
+WORKDIR /app
+
+# Stage 2: Dependencies installation
+FROM base as dependencies
+
+# Copy requirements first for better layer caching
+COPY models/{MODEL_NAME}/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Stage 3: Application
+FROM dependencies as application
+
+# Copy application code
+COPY models/ ./models/
+COPY server/ ./server/
+
+# Change ownership to non-root user
+RUN chown -R lingua:lingua /app
+
+# Switch to non-root user
+USER lingua
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Default command
+CMD ["python", "-m", "server.app.main"]
+
+# Labels for metadata
+LABEL maintainer="Lingua Nexus Team"
+LABEL model="{MODEL_NAME}"
+LABEL version="{MODEL_VERSION}"
+LABEL description="{MODEL_NAME} translation model for Lingua Nexus"
+
+# Environment variables for model configuration
+ENV LINGUA_NEXUS_{MODEL_ENV_PREFIX}_MODEL_PATH={DEFAULT_MODEL_PATH}
+ENV LINGUA_NEXUS_DEVICE=auto
+ENV LINGUA_NEXUS_{MODEL_ENV_PREFIX}_MAX_LENGTH=512

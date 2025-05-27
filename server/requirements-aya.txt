@@ -1,0 +1,19 @@
+# Aya-only optimized dependencies (using transformers only)
+fastapi>=0.100.0
+uvicorn>=0.22.0
+pydantic>=1.10.7
+transformers>=4.36.0,<4.41.0
+torch>=2.1.0,<2.2.0
+sentencepiece==0.1.99
+slowapi>=0.1.7
+python-dotenv>=1.0.0
+python-multipart>=0.0.6
+typing_extensions>=4.4.0
+accelerate>=0.18.0
+tokenizers>=0.15.0
+bitsandbytes>=0.37.0
+huggingface-hub>=0.19.0
+# Additional for model handling
+diskcache>=5.6.1
+# GGUF support - installed separately in Dockerfile
+# llama-cpp-python>=0.2.0

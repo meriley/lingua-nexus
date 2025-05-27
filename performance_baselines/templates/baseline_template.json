@@ -1,0 +1,26 @@
+{
+    "model_name": "template",
+    "timestamp": "2025-01-01T00:00:00Z",
+    "system_info": {
+        "platform": "linux",
+        "python_version": "3.11",
+        "cpu_count": 8,
+        "memory_gb": 16
+    },
+    "baselines": {
+        "model_loading_time_seconds": 300.0,
+        "inference_latency_ms": 100.0,
+        "throughput_chars_per_sec": 1000.0,
+        "memory_peak_mb": 2048.0,
+        "batch_processing_time_seconds": 30.0,
+        "success_rate_percent": 99.0
+    },
+    "thresholds": {
+        "model_loading_time": 25.0,
+        "inference_latency": 20.0,
+        "throughput": -15.0,
+        "memory_usage": 30.0,
+        "batch_processing_time": 25.0,
+        "success_rate": -5.0
+    }
+}
