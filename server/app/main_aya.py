@@ -18,6 +18,8 @@ from slowapi.errors import RateLimitExceeded
 
 from .models.registry import ModelRegistry
 from .models.base import TranslationRequest, TranslationResponse
+from .utils.language_codes import LanguageCodeConverter
+from .utils.language_metadata import get_language_metadata
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -173,6 +175,25 @@ async def list_models():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/languages")
+async def get_languages():
+    """Get supported languages in unified format for client compatibility."""
+    try:
+        # Return languages in NLLB format for client compatibility
+        # The translation endpoint will handle conversion to Aya format
+        language_data = get_language_metadata()
+        
+        # Add model-specific metadata
+        language_data["supported_models"] = ["aya"]
+        language_data["primary_model"] = "aya"
+        language_data["note"] = "Language codes automatically converted for Aya model compatibility"
+        
+        return language_data
+    except Exception as e:
+        logger.error(f"Failed to get languages: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/translate", response_model=TranslationResponse)
 async def translate_text(
     request_body: TranslationRequest,
@@ -191,11 +212,33 @@ async def translate_text(
                 detail="Aya model is not available"
             )
         
+        # Convert language codes from client format to Aya format (ISO codes)
+        original_source = request_body.source_lang
+        original_target = request_body.target_lang
+        
+        # Convert NLLB codes to ISO codes (Aya uses ISO codes, not language names)
+        iso_source = LanguageCodeConverter.from_model_code(original_source, 'nllb') or original_source
+        iso_target = LanguageCodeConverter.from_model_code(original_target, 'nllb') or original_target
+        
+        # Aya uses ISO codes directly, so use the converted ISO codes
+        aya_source = iso_source
+        aya_target = iso_target
+        
+        # Create modified request with Aya language codes
+        aya_request = TranslationRequest(
+            text=request_body.text,
+            source_lang=aya_source,
+            target_lang=aya_target
+        )
+        
+        # Log the conversion
+        logger.info(f"Language conversion: {original_source} -> {aya_source}, {original_target} -> {aya_target}")
+        
         # Perform translation
-        result = await model.translate(request_body)
+        result = await model.translate(aya_request)
         
         # Log successful translation
-        logger.info(f"Translation completed: {request_body.source_lang} -> {request_body.target_lang}")
+        logger.info(f"Translation completed: {aya_source} -> {aya_target}")
         
         return result
         
